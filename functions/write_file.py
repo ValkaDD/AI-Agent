@@ -1,27 +1,39 @@
 import os
+from google.genai import types
 
 def write_file(working_directory, file_path, content):
     try:
-        path = os.path.abspath(working_directory)
-        joined = os.path.join(path, file_path)
-        target_dir = os.path.normpath(joined)
-
-        # Prevent directory traversal
-        if os.path.commonpath([path, target_dir]) != path:
+        abs_working_dir = os.path.abspath(working_directory)
+        abs_file_path = os.path.normpath(os.path.join(abs_working_dir, file_path))
+        if os.path.commonpath([abs_working_dir, abs_file_path]) != abs_working_dir:
             return f'Error: Cannot write to "{file_path}" as it is outside the permitted working directory'
-
-        # If path is an existing directory
-        if os.path.isdir(target_dir):
+        if os.path.isdir(abs_file_path):
             return f'Error: Cannot write to "{file_path}" as it is a directory'
-
-        # Create parent directory if needed
-        parent_dir = os.path.dirname(target_dir)
-        os.makedirs(parent_dir, exist_ok=True)
-
-        with open(target_dir, "w") as f:
+        os.makedirs(os.path.dirname(abs_file_path), exist_ok=True)
+        with open(abs_file_path, "w") as f:
             f.write(content)
-
-        return f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
-
+        return (
+            f'Successfully wrote to "{file_path}" ({len(content)} characters written)'
+        )
     except Exception as e:
-        return f"Error: {e}"
+        return f"Error: writing to file: {e}"
+
+
+schema_write_file = types.FunctionDeclaration(
+            name="write_file",
+            description="overwrites contents of files in a specified directory relative to the working directory",
+            parameters=types.Schema(
+                type=types.Type.OBJECT,
+                properties={
+                    "file_path": types.Schema(
+                    type=types.Type.STRING,
+                    description="Path to the file whose contents should be returned, relative to the working directory.",
+            ),
+                    "content": types.Schema(
+                    type=types.Type.STRING,
+                    description="The full content that will replace the existing file content.",
+            ),
+        },
+        required=["file_path", "content"],
+    ),
+)
